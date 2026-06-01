@@ -19,6 +19,8 @@ import {
 } from "viem";
 import {
   useAccount,
+  useBalance,
+  usePublicClient,
   useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -116,7 +118,9 @@ function CountdownUnit({ label, value }: { label: string; value: number }) {
 
 export default function Home() {
   const queryClient = useQueryClient();
+  const publicClient = usePublicClient();
   const { address, isConnected, chain } = useAccount();
+  const { data: walletBalance } = useBalance({ address });
 
   const [ethAmount, setEthAmount] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
@@ -266,9 +270,19 @@ export default function Home() {
     }
   }, [receiptError, showToast]);
 
-  const handleFund = () => {
-    if (!canFund) {
-      showToast("Connect your wallet on Sepolia to fund the campaign.", "error");
+  const handleFund = async () => {
+    if (!isConnected) {
+      showToast("Please connect your wallet first.", "error");
+      return;
+    }
+
+    if (chain?.id !== 11_155_111) {
+      showToast("Switch to Sepolia to fund the campaign.", "error");
+      return;
+    }
+
+    if (deadlinePassed) {
+      showToast("The campaign deadline has passed.", "error");
       return;
     }
 
@@ -277,10 +291,45 @@ export default function Home() {
       return;
     }
 
+    let amountWei: bigint;
+    try {
+      amountWei = parseEther(ethAmount);
+    } catch {
+      showToast("Enter a valid ETH amount.", "error");
+      return;
+    }
+
+    if (!walletBalance || walletBalance.value < amountWei) {
+      showToast("Insufficient ETH balance in your wallet.", "error");
+      return;
+    }
+
+    if (!publicClient) {
+      showToast("Unable to reach the network. Try again.", "error");
+      return;
+    }
+
+    try {
+      const usdValue = await publicClient.readContract({
+        ...crowdfundingContract,
+        functionName: "getEthUsdValue",
+        args: [amountWei],
+      });
+
+      const minUsd = minimumUsdContribution ?? 1n * 10n ** 18n;
+      if (usdValue < minUsd) {
+        showToast("Contribution must be at least $1 USD.", "error");
+        return;
+      }
+    } catch {
+      showToast("Unable to validate contribution amount. Try again.", "error");
+      return;
+    }
+
     writeContract({
       ...crowdfundingContract,
       functionName: "fund",
-      value: parseEther(ethAmount),
+      value: amountWei,
     });
   };
 

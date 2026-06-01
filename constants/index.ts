@@ -1,5 +1,5 @@
 // export const CROWDFUNDING_ADDRESS = '0xE5fC5aC321791703016dd26fc63FEB8a593B677d' as const;
-export const CROWDFUNDING_ADDRESS = '0xDE4ECC256930F4702afD7c8437345C063160cc18' as const;
+export const CROWDFUNDING_ADDRESS = '0x8FF1fD9a688d0eEC2814012473fc3d8135C1Ca52' as const;
 
 export const CROWDFUNDING_ABI = [
   {
@@ -130,6 +130,19 @@ export const CROWDFUNDING_ABI = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setMinimumUsdContribution",
+    "inputs": [
+      {
+        "name": "_newMinUsd",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -272,6 +285,11 @@ export const CROWDFUNDING_ABI = [
   {
     "type": "error",
     "name": "Crowdfunding__InvalidConstructorArgs",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Crowdfunding__InvalidMinimumUsd",
     "inputs": []
   },
   {
