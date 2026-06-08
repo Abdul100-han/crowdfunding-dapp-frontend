@@ -32,6 +32,11 @@ const crowdfundingContract = {
   abi: CROWDFUNDING_ABI,
 } as const;
 
+const SEPOLIA_CHAIN_ID = 11_155_111;
+
+/** Reserve wei for tx gas so fund amount + gas does not exceed wallet balance. */
+const FUND_GAS_BUFFER_WEI = parseEther("0.001");
+
 type ToastState = {
   message: string;
   type: "success" | "error";
@@ -120,7 +125,15 @@ export default function Home() {
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { address, isConnected, chain } = useAccount();
-  const { data: walletBalance } = useBalance({ address });
+  const {
+    data: walletBalance,
+    isLoading: isBalanceLoading,
+    refetch: refetchWalletBalance,
+  } = useBalance({
+    address,
+    chainId: SEPOLIA_CHAIN_ID,
+    query: { enabled: Boolean(address) && isConnected },
+  });
 
   const [ethAmount, setEthAmount] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
@@ -219,7 +232,7 @@ export default function Home() {
   }, [fundingGoalUsd, totalUsdRaised]);
 
   const deadlinePassed = countdown.expired;
-  const canFund = isConnected && !deadlinePassed && chain?.id === 11_155_111;
+  const canFund = isConnected && !deadlinePassed && chain?.id === SEPOLIA_CHAIN_ID;
   const canWithdraw = isOwner && deadlinePassed && goalMet;
   const canRefund =
     isConnected &&
@@ -276,7 +289,7 @@ export default function Home() {
       return;
     }
 
-    if (chain?.id !== 11_155_111) {
+    if (chain?.id !== SEPOLIA_CHAIN_ID) {
       showToast("Switch to Sepolia to fund the campaign.", "error");
       return;
     }
@@ -286,20 +299,39 @@ export default function Home() {
       return;
     }
 
-    if (!ethAmount || Number(ethAmount) <= 0) {
+    const trimmedEthAmount = ethAmount.trim();
+    if (!trimmedEthAmount || !/^\d+(\.\d+)?$/.test(trimmedEthAmount)) {
       showToast("Enter a valid ETH amount.", "error");
       return;
     }
 
     let amountWei: bigint;
     try {
-      amountWei = parseEther(ethAmount);
+      amountWei = parseEther(trimmedEthAmount);
     } catch {
       showToast("Enter a valid ETH amount.", "error");
       return;
     }
 
-    if (!walletBalance || walletBalance.value < amountWei) {
+    if (amountWei === 0n) {
+      showToast("Enter a valid ETH amount.", "error");
+      return;
+    }
+
+    const balanceResult = await refetchWalletBalance();
+    const balanceWei = balanceResult.data?.value ?? walletBalance?.value;
+
+    if (balanceWei === undefined) {
+      if (isBalanceLoading) {
+        showToast("Loading wallet balance. Please try again.", "error");
+      } else {
+        showToast("Unable to read wallet balance. Try again.", "error");
+      }
+      return;
+    }
+
+    const requiredWei = amountWei + FUND_GAS_BUFFER_WEI;
+    if (balanceWei < requiredWei) {
       showToast("Insufficient ETH balance in your wallet.", "error");
       return;
     }
@@ -508,7 +540,7 @@ export default function Home() {
                 Connect your wallet to contribute.
               </p>
             )}
-            {isConnected && chain?.id !== 11_155_111 && (
+            {isConnected && chain?.id !== SEPOLIA_CHAIN_ID && (
               <p className="mt-3 text-sm text-amber-300">
                 Switch to Sepolia to interact with this campaign.
               </p>
