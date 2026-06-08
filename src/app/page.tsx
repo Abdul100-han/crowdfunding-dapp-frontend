@@ -50,6 +50,18 @@ type CountdownState = {
   expired: boolean;
 };
 
+function formatEthBalance(value: bigint | undefined) {
+  if (value === undefined) {
+    return null;
+  }
+
+  const eth = Number(formatEther(value));
+  return `${eth.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  })} ETH`;
+}
+
 function formatUsd(value: bigint | undefined) {
   if (value === undefined) {
     return "—";
@@ -132,8 +144,15 @@ export default function Home() {
   } = useBalance({
     address,
     chainId: SEPOLIA_CHAIN_ID,
-    query: { enabled: Boolean(address) && isConnected },
+    query: {
+      enabled: Boolean(address) && isConnected,
+      refetchInterval: 12_000,
+    },
   });
+
+  const walletBalanceLabel = isBalanceLoading
+    ? "Loading…"
+    : formatEthBalance(walletBalance?.value) ?? "—";
 
   const [ethAmount, setEthAmount] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
@@ -396,7 +415,7 @@ export default function Home() {
               <h1 className="text-xl font-semibold text-white">Crowdfunding DApp</h1>
             </div>
           </div>
-          <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />
+          <ConnectButton showBalance chainStatus="icon" accountStatus="address" />
         </div>
       </header>
 
@@ -535,6 +554,18 @@ export default function Home() {
               </button>
             </div>
 
+            {isConnected && (
+              <p className="mt-3 text-sm text-slate-300">
+                Sepolia wallet balance:{" "}
+                <span className="font-medium text-white">{walletBalanceLabel}</span>
+                {chain?.id !== SEPOLIA_CHAIN_ID && (
+                  <span className="text-amber-300">
+                    {" "}
+                    (switch to Sepolia to fund — balance shown is on Sepolia)
+                  </span>
+                )}
+              </p>
+            )}
             {!isConnected && (
               <p className="mt-3 text-sm text-slate-400">
                 Connect your wallet to contribute.

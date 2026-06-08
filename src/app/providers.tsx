@@ -10,12 +10,15 @@ import { ReactNode, useState } from "react";
 const walletConnectProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "demo-project-id";
 
+const sepoliaRpcUrl =
+  process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
+
 const wagmiConfig = getDefaultConfig({
   appName: "Crowdfunding DApp",
   projectId: walletConnectProjectId,
   chains: [sepolia],
   transports: {
-    [sepolia.id]: http(),
+    [sepolia.id]: http(sepoliaRpcUrl),
   },
   ssr: true,
 });
