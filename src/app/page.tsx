@@ -71,8 +71,8 @@ function formatUsd(value: bigint | undefined) {
   return amount.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: amount < 1 ? 1 : 0,
-    maximumFractionDigits: amount < 1 ? 2 : 0,
+    minimumFractionDigits: amount < 0.01 ? 3 : amount < 1 ? 1 : 0,
+    maximumFractionDigits: amount < 0.01 ? 3 : amount < 1 ? 2 : 0,
   });
 }
 
@@ -368,7 +368,7 @@ export default function Home() {
         args: [amountWei],
       });
 
-      const minUsd = minimumUsdContribution ?? 2n * 10n ** 16n;
+      const minUsd = minimumUsdContribution ?? 2n * 10n ** 15n;
       if (usdValue < minUsd) {
         showToast(
           `Contribution must be at least ${formatUsd(minUsd)}.`,
